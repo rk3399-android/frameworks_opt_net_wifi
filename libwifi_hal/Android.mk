@@ -89,6 +89,8 @@ LIB_WIFI_HAL := libwifi-hal-fallback
 VENDOR_LOCAL_SHARED_LIBRARIES :=
 ifeq ($(BOARD_WLAN_DEVICE), bcmdhd)
   LIB_WIFI_HAL := libwifi-hal-bcm
+else ifeq ($(BOARD_WLAN_DEVICE), realtek)
+  LIB_WIFI_HAL := libwifi-hal-rtk
 else ifeq ($(BOARD_WLAN_DEVICE), qcwcn)
   LIB_WIFI_HAL := libwifi-hal-qcom
   VENDOR_LOCAL_SHARED_LIBRARIES := libcld80211
@@ -118,6 +120,7 @@ LOCAL_SHARED_LIBRARIES := \
     liblog \
     libnl \
     libutils \
+    librkwifi-ctrl \
     $(VENDOR_LOCAL_SHARED_LIBRARIES)
 LOCAL_SRC_FILES := \
     driver_tool.cpp \

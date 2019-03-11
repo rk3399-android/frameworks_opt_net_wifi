@@ -255,7 +255,7 @@ public class WifiStateMachine extends StateMachine implements WifiNative.WifiRss
     private final WifiNative.VendorHalDeathEventHandler mVendorHalDeathRecipient = () -> {
         sendMessage(CMD_VENDOR_HAL_HWBINDER_DEATH);
     };
-    private boolean mIpReachabilityDisconnectEnabled = true;
+    private boolean mIpReachabilityDisconnectEnabled = false;
 
     @Override
     public void onRssiThresholdBreached(byte curRssi) {
@@ -360,6 +360,7 @@ public class WifiStateMachine extends StateMachine implements WifiNative.WifiRss
 
     // Wakelock held during wifi start/stop and driver load/unload
     private PowerManager.WakeLock mWakeLock;
+    private PowerManager.WakeLock mSoftApWakeLock;
 
     private Context mContext;
 
@@ -1023,6 +1024,7 @@ public class WifiStateMachine extends StateMachine implements WifiNative.WifiRss
 
         PowerManager powerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getName());
+	mSoftApWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoftAp");
 
         mSuspendWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "WifiSuspend");
         mSuspendWakeLock.setReferenceCounted(false);
@@ -1652,8 +1654,16 @@ public class WifiStateMachine extends StateMachine implements WifiNative.WifiRss
     public void setHostApRunning(SoftApModeConfiguration wifiConfig, boolean enable) {
         if (enable) {
             sendMessage(CMD_START_AP, wifiConfig);
+	    if(!mSoftApWakeLock.isHeld()) {
+		loge("---- mSoftApWakeLock.acquire ----");
+		mSoftApWakeLock.acquire();
+	    }
         } else {
             sendMessage(CMD_STOP_AP);
+	    if(mSoftApWakeLock.isHeld()) {
+		loge("---- mSoftApWakeLock.release ----");
+		mSoftApWakeLock.release();
+	    }
         }
     }
 
@@ -6940,6 +6950,10 @@ public class WifiStateMachine extends StateMachine implements WifiNative.WifiRss
                     sendMessage(CMD_AP_STOPPED);
                 } else if (state == WIFI_AP_STATE_FAILED) {
                     sendMessage(CMD_START_AP_FAILURE);
+		    if(mSoftApWakeLock.isHeld()) {
+			loge("---- mSoftApWakeLock.release ----");
+			mSoftApWakeLock.release();
+		    }
                 }
 
                 setWifiApState(state, reason, mIfaceName, mMode);
